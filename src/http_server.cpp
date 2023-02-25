@@ -22,8 +22,8 @@ void http_server::start()
     if (_config._web_file_path[_config._web_file_path.size() -1] == '/')
         _config._web_file_path.pop_back();
     
-    _epoll_server->set_client_func(std::bind(&http_server::client_read_write, this, std::placeholders::_1, std::placeholders::_2));
-    //_epoll_server->set_client_func(&l_client_read_write);
+    //_epoll_server->set_client_func(std::bind(&http_server::client_read_write, this, std::placeholders::_1, std::placeholders::_2));
+    _epoll_server->set_client_func(std::bind(&http_server::client_read_write, this, std::placeholders::_1));
     _epoll_server->start();
 }
 
@@ -40,31 +40,58 @@ void http_server::set_config(std::string argv_ip, int argv_port, std::string arg
     _epoll_server = new epoll_server(argv_ip, argv_port);
 }
 
-void http_server::client_read_write(epoll_event argv_ep_ev, epoll_server& argv_this)
+//void http_server::client_read_write(epoll_event argv_ep_ev, epoll_server& argv_this)
+//{
+//    signal(SIGPIPE, SIG_IGN);
+//    int client_socket = argv_ep_ev.data.fd;
+//
+//    char* buff = new char[10240];
+//    
+//    int read_size = read(client_socket, buff, 10240);
+//    if (read_size > 0)
+//    {
+//        std::string client_header(buff);
+//        for (; read_size == 10240; )
+//        {
+//            memset(buff, 0, 1024);
+//            read_size = read(client_socket, buff, 10240);
+//            //cout << read_size << endl;
+//            client_header += buff;
+//        }
+//
+//        //cout << buff_plus << endl;
+//        web_file_read(client_socket, client_header);
+//    }
+//
+//    delete[](buff);
+//    argv_this.DEL_epoll_evs(client_socket);
+//    close(client_socket);
+//    std::cout << "发送数据程序结束\n";
+//    return;
+//}
+void http_server::client_read_write(int argv_client_socket_fd)
 {
     signal(SIGPIPE, SIG_IGN);
-    int client_socket = argv_ep_ev.data.fd;
+    int& client_socket = argv_client_socket_fd;
 
     char* buff = new char[10240];
-    
     int read_size = read(client_socket, buff, 10240);
     if (read_size > 0)
     {
         std::string client_header(buff);
         for (; read_size == 10240; )
         {
-            memset(buff, 0, 1024);
+            memset(buff, 0, 10240);
             read_size = read(client_socket, buff, 10240);
             //cout << read_size << endl;
             client_header += buff;
         }
 
-        //cout << buff_plus << endl;
         web_file_read(client_socket, client_header);
     }
 
     delete[](buff);
-    argv_this.DEL_epoll_evs(client_socket);
+    epoll_server::DEL_epoll_evs(client_socket);
     close(client_socket);
     std::cout << "发送数据程序结束\n";
     return;
@@ -106,7 +133,7 @@ void http_server::web_file_read(int& argv_client_socket, std::string& argv_clien
         int write_size = write(argv_client_socket, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size());
 
         for (; !_file.file_EOF() && write_size > 0;)
-            write(argv_client_socket, _file.get_file_str(), 102400);
+            write(argv_client_socket, _file.get_file_str(), 102400);    
     }
     return;
 }

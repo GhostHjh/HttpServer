@@ -15,11 +15,10 @@
 #include <signal.h>
 
 
-
-
+int epoll_server::_epoll_fd = 0;
 
 epoll_server::epoll_server(std::string argv_ip, int argv_port, int argv_listen_size)
-    : _IP(argv_ip), _PORT(argv_port), _socket_fd(0), _epoll_fd(0), _listen_size(argv_listen_size)
+    : _IP(argv_ip), _PORT(argv_port), _socket_fd(0), _listen_size(argv_listen_size)
 {
     socket_init();
     epoll_init();
@@ -101,7 +100,7 @@ void epoll_server::start()
     int for_int = 0;
 
     ThreadPool _threadpool;
-    signal(SIGPIPE,SIG_IGN);
+    //signal(SIGPIPE,SIG_IGN);
     for(; _status;)
     {
         epoll_wait_return = epoll_wait(_epoll_fd, _epoll_evs, _listen_size, -1);
@@ -116,12 +115,10 @@ void epoll_server::start()
             }
             else 
             {
-                std::cout << "一个链接发送了信息\n";
-                //_threadpool.add_task(client_func, _epoll_evs[for_int], *this);
-                client_func(_epoll_evs[for_int], *this);
-                std::cout << "那个链接发送的信息处理完成\n\n\n";
+                int tmp_client_fd = _epoll_evs[for_int].data.fd;
+                _threadpool.add_task(client_func, tmp_client_fd);
+                //client_func(_epoll_evs[for_int].data.fd);
             }
-
         }
     }
 }
@@ -132,13 +129,18 @@ void epoll_server::stop()
     _status = false;
 }
 
-const bool epoll_server::set_client_func(std::function<void (epoll_event argv_event_ev, epoll_server &)> argv_client_func)
+//const bool epoll_server::set_client_func(std::function<void (epoll_event argv_event_ev, epoll_server &)> argv_client_func)
+//{
+//    client_func = std::move(argv_client_func);
+//    //client_func = std::move(argv_client_func);
+//    return static_cast<bool>(client_func);
+//}
+const bool epoll_server::set_client_func(std::function<void (int argv_client_socket_fd)> argv_client_func)
 {
     client_func = std::move(argv_client_func);
     //client_func = std::move(argv_client_func);
     return static_cast<bool>(client_func);
 }
-
 const bool epoll_server::set_client_func()
 { 
     return static_cast<bool>(client_func);
