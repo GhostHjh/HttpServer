@@ -12,6 +12,8 @@
 #include <sys/fcntl.h>
 #include <ThreadPool.hpp>
 
+#include <fcntl.h>
+
 class epoll_server
 {
 public:
@@ -20,7 +22,7 @@ public:
     ~epoll_server();
 
 public:
-    void status();
+    void start();
     void stop();
 
 public:
@@ -33,6 +35,7 @@ public:
 private:
     const bool socket_init();
     const bool epoll_init();
+    void file_fcntl(int& argv_fd);
 
 private:
     //std::atomic<bool> _status;

@@ -3,6 +3,7 @@
 #include "http_header.h"
 #include <arpa/inet.h>
 #include <cstring>
+#include <fcntl.h>
 #include <functional>
 #include <iostream>
 #include <netinet/in.h>
@@ -11,6 +12,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <signal.h>
 
 
 
@@ -65,7 +67,7 @@ const bool epoll_server::epoll_init()
         epoll_event epoll_ev;
         epoll_ev.data.fd = _socket_fd;
         //epoll_ev.events = EPOLLIN | EPOLLET;
-        epoll_ev.events = EPOLLIN;
+        epoll_ev.events = EPOLLIN | EPOLLET;
 
         epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _socket_fd, &epoll_ev);
 
@@ -77,7 +79,14 @@ const bool epoll_server::epoll_init()
 
 }
 
-void epoll_server::status()
+void epoll_server::file_fcntl(int& argv_fd)
+{
+    int file_flag = fcntl(argv_fd, F_GETFL);
+    file_flag |= O_NONBLOCK;
+    fcntl(argv_fd, F_SETFL, file_flag);
+}
+
+void epoll_server::start()
 {
     std::cout << set_client_func() <<  std::endl;
 
@@ -92,42 +101,24 @@ void epoll_server::status()
     int for_int = 0;
 
     ThreadPool _threadpool;
+    signal(SIGPIPE,SIG_IGN);
     for(; _status;)
     {
         epoll_wait_return = epoll_wait(_epoll_fd, _epoll_evs, _listen_size, -1);
         std::cout << "有事件" << epoll_wait_return << "个\n";
-
-        if (epoll_wait_return == -1)
-            
 
         for (for_int = 0; for_int < epoll_wait_return; ++for_int)
         {
             if (_epoll_evs[for_int].data.fd == _socket_fd)
             {
                 int client_socket = accept(_socket_fd, nullptr, nullptr);
-                //epoll_event tmp_ep_ev;
-                //tmp_ep_ev.events = EPOLLIN;
-                //tmp_ep_ev.data.fd = client_socket;
-                //epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, client_socket, &tmp_ep_ev);
                 ADD_epoll_evs(client_socket);
             }
             else 
             {
                 std::cout << "一个链接发送了信息\n";
-                _threadpool.add_task(client_func, _epoll_evs[for_int], *this);
-                //client_func(_epoll_evs[for_int], *this);
-                //char* buff = new char[1024];
-                //memset(buff, 0, 1024);
-                //read(_epoll_evs[for_int].data.fd, buff, 1024);
-                //std::string buff_plus;
-                //buff_plus += buff;
-                //delete[](buff);
-                ////std::cout << buff << std::endl;
-                //http_header tmp_http_header(buff_plus);
-                //tmp_http_header.show();
-
-                //epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, _epoll_evs[for_int].data.fd, nullptr);
-                //close(_epoll_evs[for_int].data.fd);
+                //_threadpool.add_task(client_func, _epoll_evs[for_int], *this);
+                client_func(_epoll_evs[for_int], *this);
                 std::cout << "那个链接发送的信息处理完成\n\n\n";
             }
 
@@ -156,8 +147,8 @@ const bool epoll_server::set_client_func()
 void epoll_server::ADD_epoll_evs(int argv_client_socket)
 {
     epoll_event tmp_ep_ev;
-    //tmp_ep_ev.events = EPOLLIN | EPOLLET;
-    tmp_ep_ev.events = EPOLLIN;
+    tmp_ep_ev.events = EPOLLIN | EPOLLET;
+    file_fcntl(argv_client_socket);
     tmp_ep_ev.data.fd = argv_client_socket;
 
     epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, argv_client_socket, &tmp_ep_ev);

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <list>
+#include <memory>
 #include <functional>
 #include <condition_variable>
 #include <future>
@@ -37,18 +38,21 @@ inline ThreadPool::ThreadPool(int argv_ThreadPool_size)
             [this]()
             {
                 std::function<void()> tmp_task;
-
+                for (;;)
                 {
-                    std::unique_lock<std::mutex> tmp_lock(this->_mutex);
-                    this->_condition.wait(tmp_lock, [this](){ return this->_is_stop || (this->_TaskS.size() != 0); });
-                    if (this->_is_stop && (this->_TaskS.size() == 0))
-                        return;
+                    {
+                        std::unique_lock<std::mutex> tmp_lock(this->_mutex);
+                        this->_condition.wait(tmp_lock, [this](){ return this->_is_stop.load() || (this->_TaskS.size() != 0); });
+                        if (this->_is_stop.load() && (this->_TaskS.size() == 0))
+                            return;
 
-                    tmp_task = std::move(this->_TaskS.front());
-                    this->_TaskS.pop_front();
+                        tmp_task = std::move(this->_TaskS.front());
+                        this->_TaskS.pop_front();
+                    }
+
+                    tmp_task();
                 }
 
-                tmp_task();
             }
         );
     }
@@ -56,7 +60,7 @@ inline ThreadPool::ThreadPool(int argv_ThreadPool_size)
 
 inline ThreadPool::~ThreadPool()
 {
-    _is_stop = true;
+    _is_stop.store(true);
 
     _condition.notify_all();
 
@@ -68,11 +72,12 @@ template<class Func, class ...Argvs>
 inline auto ThreadPool::add_task(Func&& func, Argvs&& ...argvs) -> std::future< typename std::result_of<Func(Argvs...)>::type >
 {
     using func_return_type = typename std::result_of<Func(Argvs...)>::type;
-    std::packaged_task<func_return_type()>* tmp_func = new std::packaged_task<func_return_type()>(std::bind(std::forward<Func>(func), std::forward<Argvs>(argvs)...));
+    //std::packaged_task<func_return_type()>* tmp_func = new std::packaged_task<func_return_type()>(std::bind(std::forward<Func>(func), std::forward<Argvs>(argvs)...));
+    auto tmp_func = std::make_shared< std::packaged_task<func_return_type()> >( std::bind(std::forward<Func>(func), std::forward<Argvs>(argvs)...) );
     std::future<func_return_type> tmp_func_return = tmp_func->get_future();
 
     {
-        if (_is_stop)
+        if (_is_stop.load())
             std::logic_error("线程池关闭");
 
         std::unique_lock<std::mutex>  tmp_lock(_mutex);
@@ -81,7 +86,6 @@ inline auto ThreadPool::add_task(Func&& func, Argvs&& ...argvs) -> std::future< 
             [tmp_func]()
             {
                 (*tmp_func)();
-                //delete(tmp_func);
             }
         );
     }
