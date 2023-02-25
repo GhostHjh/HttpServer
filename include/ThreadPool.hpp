@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <memory>
 #include <vector>
 #include <list>
 #include <functional>
@@ -17,6 +18,8 @@ public:
 
     template<class Func, class ...Argvs>
     auto add_task(Func&& func, Argvs&& ...argvs) -> std::future< typename std::result_of<Func(Argvs...)>::type >;
+
+    const int get_task_size();
 
 private:
     std::vector<std::thread> _ThreadPool;
@@ -36,19 +39,23 @@ inline ThreadPool::ThreadPool(int argv_ThreadPool_size)
         (
             [this]()
             {
-                std::function<void()> tmp_task;
-
+                for (; ;)
                 {
-                    std::unique_lock<std::mutex> tmp_lock(this->_mutex);
-                    this->_condition.wait(tmp_lock, [this](){ return this->_is_stop || (this->_TaskS.size() != 0); });
-                    if (this->_is_stop && (this->_TaskS.size() == 0))
-                        return;
+                    std::function<void()> tmp_task;
 
-                    tmp_task = std::move(this->_TaskS.front());
-                    this->_TaskS.pop_front();
+                    {
+                        std::unique_lock<std::mutex> tmp_lock(this->_mutex);
+                        this->_condition.wait(tmp_lock, [this](){ std::cout << "等待任务中\n";return this->_is_stop || (this->_TaskS.size() != 0); });
+                        if (this->_is_stop && (this->_TaskS.size() == 0))
+                            return;
+
+                        tmp_task = std::move(this->_TaskS.front());
+                        this->_TaskS.pop_front();
+                        std::cout << "成功获取一个新任务\n";
+                        std::cout << "当前任务列表有 " << this->_TaskS.size() << " 个任务\n";
+                    }
+                    tmp_task();
                 }
-
-                tmp_task();
             }
         );
     }
@@ -56,6 +63,7 @@ inline ThreadPool::ThreadPool(int argv_ThreadPool_size)
 
 inline ThreadPool::~ThreadPool()
 {
+    std::cout << "关闭线程池\n"; 
     _is_stop = true;
 
     _condition.notify_all();
@@ -68,7 +76,8 @@ template<class Func, class ...Argvs>
 inline auto ThreadPool::add_task(Func&& func, Argvs&& ...argvs) -> std::future< typename std::result_of<Func(Argvs...)>::type >
 {
     using func_return_type = typename std::result_of<Func(Argvs...)>::type;
-    std::packaged_task<func_return_type()>* tmp_func = new std::packaged_task<func_return_type()>(std::bind(std::forward<Func>(func), std::forward<Argvs>(argvs)...));
+    //std::packaged_task<func_return_type()>* tmp_func = new std::packaged_task<func_return_type()>(std::bind(std::forward<Func>(func), std::forward<Argvs>(argvs)...));
+    auto tmp_func = std::make_shared< std::packaged_task<func_return_type()> >( std::bind(std::forward<Func>(func), std::forward<Argvs>(argvs)...) );
     std::future<func_return_type> tmp_func_return = tmp_func->get_future();
 
     {
@@ -78,10 +87,9 @@ inline auto ThreadPool::add_task(Func&& func, Argvs&& ...argvs) -> std::future< 
         std::unique_lock<std::mutex>  tmp_lock(_mutex);
         _TaskS.emplace_back
         (
-            [tmp_func]()
+            [tmp_func]() -> void
             {
                 (*tmp_func)();
-                //delete(tmp_func);
             }
         );
     }
@@ -90,6 +98,11 @@ inline auto ThreadPool::add_task(Func&& func, Argvs&& ...argvs) -> std::future< 
     return tmp_func_return;
 }
 
+
+inline const int ThreadPool::get_task_size()
+{
+    return _TaskS.size();
+}
 
 
 

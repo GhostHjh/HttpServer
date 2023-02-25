@@ -3,6 +3,7 @@
 #include "http_header.h"
 #include <arpa/inet.h>
 #include <cstring>
+#include <fcntl.h>
 #include <functional>
 #include <iostream>
 #include <netinet/in.h>
@@ -21,7 +22,7 @@ epoll_server::epoll_server(std::string argv_ip, int argv_port, int argv_listen_s
 {
     socket_init();
     epoll_init();
-    _epoll_evs = new epoll_event[_listen_size];
+    //_epoll_evs = new epoll_event[_listen_size];
     _status = true;
 }
 
@@ -29,7 +30,7 @@ epoll_server::~epoll_server()
 {
     close(_epoll_fd);
     close(_socket_fd);
-    delete[](_epoll_evs);
+    //delete[](_epoll_evs);
 }
 
 const bool epoll_server::socket_init()
@@ -64,8 +65,8 @@ const bool epoll_server::epoll_init()
 
         epoll_event epoll_ev;
         epoll_ev.data.fd = _socket_fd;
-        //epoll_ev.events = EPOLLIN | EPOLLET;
-        epoll_ev.events = EPOLLIN;
+        epoll_ev.events = EPOLLIN | EPOLLET;
+        //epoll_ev.events = EPOLLIN;
 
         epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _socket_fd, &epoll_ev);
 
@@ -75,6 +76,13 @@ const bool epoll_server::epoll_init()
 
     return true;
 
+}
+
+void epoll_server::fcntl_fd(int& argv_fd)
+{
+    int fd_flag = fcntl(argv_fd, F_GETFL);
+    fd_flag |= O_NONBLOCK;
+    fcntl(argv_fd, F_SETFL, fd_flag);
 }
 
 void epoll_server::status()
@@ -91,20 +99,20 @@ void epoll_server::status()
     int epoll_wait_return = 0;
     int for_int = 0;
 
-    ThreadPool _threadpool;
+    ThreadPool _threadpool(1);
+    int fd_size = 0;
     for(; _status;)
     {
+        epoll_event _epoll_evs[_listen_size];
         epoll_wait_return = epoll_wait(_epoll_fd, _epoll_evs, _listen_size, -1);
-        std::cout << "有事件" << epoll_wait_return << "个\n";
-
-        if (epoll_wait_return == -1)
-            
+        //std::cout << "有事件" << epoll_wait_return << "个\n";
 
         for (for_int = 0; for_int < epoll_wait_return; ++for_int)
         {
             if (_epoll_evs[for_int].data.fd == _socket_fd)
             {
                 int client_socket = accept(_socket_fd, nullptr, nullptr);
+                fcntl_fd(client_socket);
                 //epoll_event tmp_ep_ev;
                 //tmp_ep_ev.events = EPOLLIN;
                 //tmp_ep_ev.data.fd = client_socket;
@@ -113,9 +121,10 @@ void epoll_server::status()
             }
             else 
             {
-                std::cout << "一个链接发送了信息\n";
-                _threadpool.add_task(client_func, _epoll_evs[for_int], *this);
-                //client_func(_epoll_evs[for_int], *this);
+                //std::cout << "一个链接发送了信息\n";
+                int tmp_client_socket = (_epoll_evs[for_int].data).fd;
+                _threadpool.add_task(client_func, tmp_client_socket);
+                //client_func(tmp_client_socket);
                 //char* buff = new char[1024];
                 //memset(buff, 0, 1024);
                 //read(_epoll_evs[for_int].data.fd, buff, 1024);
@@ -128,11 +137,14 @@ void epoll_server::status()
 
                 //epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, _epoll_evs[for_int].data.fd, nullptr);
                 //close(_epoll_evs[for_int].data.fd);
-                std::cout << "那个链接发送的信息处理完成\n\n\n";
+                DEL_epoll_evs(tmp_client_socket);
+                //std::cout << "那个链接发送的信息处理完成\n\n\n";
             }
 
         }
     }
+
+    std::cout << "\n服务器停止\n";
 }
 
 void epoll_server::stop()
@@ -141,9 +153,23 @@ void epoll_server::stop()
     _status = false;
 }
 
-const bool epoll_server::set_client_func(std::function<void (epoll_event argv_event_ev, epoll_server &)> argv_client_func)
+//const bool epoll_server::set_client_func(std::function<void (epoll_event argv_event_ev, epoll_server &)> argv_client_func)
+//{
+//    client_func = std::move(argv_client_func);
+//    //client_func = std::move(argv_client_func);
+//    return static_cast<bool>(client_func);
+//}
+
+//const bool epoll_server::set_client_func(std::function<void (int, epoll_server &)> argv_client_func)
+//{
+//    client_func = argv_client_func;
+//    //client_func = std::move(argv_client_func);
+//    return static_cast<bool>(client_func);
+//}
+
+const bool epoll_server::set_client_func(std::function<void (int)> argv_client_func)
 {
-    client_func = std::move(argv_client_func);
+    client_func = argv_client_func;
     //client_func = std::move(argv_client_func);
     return static_cast<bool>(client_func);
 }
@@ -156,8 +182,8 @@ const bool epoll_server::set_client_func()
 void epoll_server::ADD_epoll_evs(int argv_client_socket)
 {
     epoll_event tmp_ep_ev;
-    //tmp_ep_ev.events = EPOLLIN | EPOLLET;
-    tmp_ep_ev.events = EPOLLIN;
+    tmp_ep_ev.events = EPOLLIN | EPOLLET;
+    //tmp_ep_ev.events = EPOLLIN;
     tmp_ep_ev.data.fd = argv_client_socket;
 
     epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, argv_client_socket, &tmp_ep_ev);

@@ -12,6 +12,8 @@
 #include <sys/fcntl.h>
 #include <ThreadPool.hpp>
 
+#include "fcntl.h"
+
 class epoll_server
 {
 public:
@@ -24,7 +26,9 @@ public:
     void stop();
 
 public:
-    const bool set_client_func(std::function<void(epoll_event argv_event_ev, epoll_server& argv_this)> argv_client_func);
+    //const bool set_client_func(std::function<void(epoll_event argv_event_ev, epoll_server& argv_this)> argv_client_func);
+    //const bool set_client_func(std::function<void(int, epoll_server&)> argv_client_func);
+    const bool set_client_func(std::function<void(int)> argv_client_func);
     const bool set_client_func();
 
     void ADD_epoll_evs(int argv_client_socket);
@@ -33,6 +37,7 @@ public:
 private:
     const bool socket_init();
     const bool epoll_init();
+    void fcntl_fd(int& argv_fd);
 
 private:
     //std::atomic<bool> _status;
@@ -43,10 +48,12 @@ private:
     int _socket_fd;
     int _epoll_fd;
     int _listen_size;
-    epoll_event* _epoll_evs;
+    //epoll_event* _epoll_evs;
 
 private:
-    std::function<void(epoll_event argv_event_ev, epoll_server& argv_this)> client_func;
+    //std::function<void(epoll_event argv_event_ev, epoll_server& argv_this)> client_func;
+    //std::function<void(int client_fd, epoll_server& argv_this)> client_func;
+    std::function<void(int client_fd)> client_func;
 };
 
 

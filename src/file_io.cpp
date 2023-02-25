@@ -14,11 +14,12 @@ file_io::file_io(std::string argv_file_name, std::ios::openmode argv_file_open_t
         _file.seekg(0, std::ios::end);
         _file_size = _file.tellg();
         _file.seekg(0, std::ios::beg);
+        file_str = new char[file_read_size];   
     }
 
     std::cout << "文件大小 " << _file_size << " bit\n";
 
-    file_str = new char[file_read_size];
+
 }
 
 file_io::~file_io()
