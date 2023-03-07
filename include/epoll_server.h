@@ -49,8 +49,6 @@ private:
 
     static epoll_server* _epoll_server;
 private:
-    //std::function<void(epoll_event argv_event_ev, epoll_server& argv_this)> client_func;
-    //std::function<void(int client_fd, epoll_server& argv_this)> client_func;
     std::function<void(int client_fd)> client_func;
 };
 

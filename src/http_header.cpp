@@ -147,11 +147,6 @@ void http_header::add_server_header_request_type_length(std::string argv_request
     server_header_str += "Content-Type: " + argv_request_type +"\r\nContent-length: " + std::to_string(argv_request_length) + "\r\n";
 }
 
-//void http_header::add_server_header_request_length(int argv_request_length)
-//{
-//    server_header_str += "Content-Type: " + get_accept_type() +"\r\nContent-length: " + std::to_string(argv_request_length) + "\r\n";
-//}
-
 void http_header::add_server_header(std::initializer_list< std::string > argv_pair_s)
 {
     if (argv_pair_s.size() % 2 != 0)
