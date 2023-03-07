@@ -37,7 +37,6 @@ private:
 
 private:
     config _config;
-    epoll_server* _epoll_server;
 };
 
 
