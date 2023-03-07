@@ -125,6 +125,7 @@ void epoll_server::status()
                 int tmp_client_socket = (_epoll_evs[for_int].data).fd;
                 _threadpool.add_task(client_func, tmp_client_socket);
                 //client_func(tmp_client_socket);
+                //client_func(tmp_client_socket);
                 //char* buff = new char[1024];
                 //memset(buff, 0, 1024);
                 //read(_epoll_evs[for_int].data.fd, buff, 1024);

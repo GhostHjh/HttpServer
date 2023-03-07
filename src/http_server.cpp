@@ -21,8 +21,8 @@ http_server::~http_server()
 
 void http_server::start()
 {
-    if (_config._web_file_path[_config._web_file_path.size() -1] == '/')
-        _config._web_file_path.pop_back();
+    if (_config._web_fpath[_config._web_fpath.size() -1] == '/')
+        _config._web_fpath.pop_back();
     
     //_epoll_server->set_client_func(std::move( std::bind(&http_server::client_read_write, this, std::placeholders::_1, std::placeholders::_2)));
     _epoll_server->set_client_func(std::bind(&http_server::client_read_write, this, std::placeholders::_1));
@@ -30,17 +30,23 @@ void http_server::start()
     _epoll_server->status();
 }
 
-void http_server::set_config(std::string argv_ip, int argv_port, std::string argv_web_file_path, std::string argv_web_default, std::string argv_log_path, std::string argv_long_file_name)
+void http_server::set_config(std::string argv_ip, int argv_port, std::string argv_web_fpath, std::string argv_web_default_index_fname, std::string argv_log_path, std::string argv_long_file_name)
 {
     _config._IP = argv_ip;
     _config._PORT = argv_port;
-    _config._web_file_path = argv_web_file_path;
-    _config._web_default = argv_web_default;
+    _config._web_fpath = argv_web_fpath;
+    _config._web_default_index_fname = argv_web_default_index_fname;
     _config._log_path = argv_log_path;
-    _config._log_file_name = argv_long_file_name;
+    _config._log_fname = argv_long_file_name;
+
+    if (_config._web_fpath[_config._web_fpath.size() -1] == '/')
+        _config._web_fpath.pop_back();
+    
+    if (_config._web_default_index_fname[0] != '/')
+        _config._web_default_index_fname = '/' + _config._web_default_index_fname;
 
     //log::insetance()->set_log_path(_config._log_path);
-    //log::insetance()->open(_config._log_file_name);
+    //log::insetance()->open(_config._log_fname);
 
     if (_epoll_server != nullptr)
         delete(_epoll_server);
@@ -120,11 +126,11 @@ void http_server::set_config(std::string argv_ip, int argv_port, std::string arg
 //void http_server::web_file_read(int& argv_client_socket, std::string& argv_client_header)
 //{
 //
-//    http_header tmp_header(argv_client_header, _config._web_default);
+//    http_header tmp_header(argv_client_header, _config._web_default_index_fname);
 //    if (tmp_header.client_header_is_ok())
 //    {
-//        std::cout << "请求路径" << _config._web_file_path << tmp_header.get_request_path() << std::endl; 
-//        file_io _file(_config._web_file_path + tmp_header.get_request_path(), file_read_b(tmp_header.get_accept_type()), 1024);
+//        std::cout << "请求路径" << _config._web_fpath << tmp_header.get_request_path() << std::endl; 
+//        file_io _file(_config._web_fpath + tmp_header.get_request_path(), file_read_b(tmp_header.get_accept_type()), 1024);
 //        if (!_file.file_is_open())
 //            return;
 //        
@@ -185,11 +191,61 @@ void http_server::client_read_write(int argv_client_fd)
     //web_file_read(client_socket, buff_plus);
 
 
-    http_header tmp_header(client_header, _config._web_default);
+    //http_header tmp_header(client_header);
+    //if (tmp_header.client_header_is_ok())
+    //{
+    //    std::cout << "请求路径" << _config._web_fpath << tmp_header.get_request_path() << std::endl;
+
+    //    //检测请求的文件类型
+    //    std::ios_base::openmode file_opmode = std::ios::in;
+    //    if (tmp_header.get_accept_type().size() == 0)
+    //        file_opmode = std::ios::in;
+    //    else if (tmp_header.get_accept_type()[0] == 't' && tmp_header.get_accept_type()[1] == 'e' && tmp_header.get_accept_type()[2] == 'x' && tmp_header.get_accept_type()[3] == 't')
+    //        file_opmode = std::ios::in;
+    //    else if (tmp_header.get_accept_type() == "*/*")
+    //        file_opmode = std::ios::in;
+    //    else
+    //        file_opmode = std::ios::in | std::ios::binary;
+    //    
+    //    std::string tmp_file_path_name = _config._web_fpath;
+    //    if (tmp_header.get_request_path() == "/")
+    //        tmp_file_path_name += _config._web_default_index_fname;
+
+    //    file_io _file(_config._web_fpath + tmp_header.get_request_path(), file_opmode, 102400);
+    //    if (!_file.file_is_open())
+    //    {
+    //        std::cout << "没有客户端要的资源，直接断开链接\n\n\n";
+    //        close(client_socket);
+    //        return;
+    //    }
+    //    
+    //    tmp_header.add_server_header_request_status();
+    //    tmp_header.add_server_header_request_type_length(tmp_header.get_accept_type(), _file.file_size());
+    //    tmp_header.add_serverheader_request_end();
+
+    //    int write_size = write(client_socket, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size());
+    //    for (; !_file.file_EOF() && write_size > 0;)
+    //    {
+    //        write_size = write(client_socket, _file.get_file_str(), 102400);
+    //    }
+    //    
+    //    if (write_size < 1)
+    //        std::cout << "客户端主动断开一次\n";
+    //}
+    web_file_read(client_socket, client_header);
+
+    close(client_socket);
+    std::cout << "断开客户端socket链接\n\n\n";
+}
+
+void http_server::web_file_read(int& argv_client_socket, std::string& argv_client_header)
+{
+    http_header tmp_header(argv_client_header);
     if (tmp_header.client_header_is_ok())
     {
-        std::cout << "请求路径" << _config._web_file_path << tmp_header.get_request_path() << std::endl;
+        std::cout << "请求路径" << tmp_header.get_request_path() << std::endl;
 
+        //检测请求的文件类型
         std::ios_base::openmode file_opmode = std::ios::in;
         if (tmp_header.get_accept_type().size() == 0)
             file_opmode = std::ios::in;
@@ -199,12 +255,21 @@ void http_server::client_read_write(int argv_client_fd)
             file_opmode = std::ios::in;
         else
             file_opmode = std::ios::in | std::ios::binary;
+        
+        //设置要打开的文件
+        std::string tmp_file_path_name = _config._web_fpath;
 
-        file_io _file(_config._web_file_path + tmp_header.get_request_path(), file_opmode, 102400);
+        if (tmp_header.get_request_path() == "/")
+            tmp_file_path_name += _config._web_default_index_fname;
+        else
+            tmp_file_path_name += tmp_header.get_request_path();
+    
+        std::cout << "要打开的文件为" << tmp_file_path_name << std::endl;
+        file_io _file(tmp_file_path_name, file_opmode, 102400);
         if (!_file.file_is_open())
         {
             std::cout << "没有客户端要的资源，直接断开链接\n\n\n";
-            close(client_socket);
+            //close(argv_client_socket);
             return;
         }
         
@@ -212,18 +277,19 @@ void http_server::client_read_write(int argv_client_fd)
         tmp_header.add_server_header_request_type_length(tmp_header.get_accept_type(), _file.file_size());
         tmp_header.add_serverheader_request_end();
 
-        int write_size = write(client_socket, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size());
+        int write_size = write(argv_client_socket, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size());
         for (; !_file.file_EOF() && write_size > 0;)
         {
-            write_size = write(client_socket, _file.get_file_str(), 102400);
+            write_size = write(argv_client_socket, _file.get_file_str(), 102400);
         }
         
         if (write_size < 1)
-            std::cout << "客户端主动断开一次\n";
+            std::cout << "客户端主动断开\n";
+        else
+            std::cout << "客户端请求内容发送完成\n";
     }
-
-    close(client_socket);
-    std::cout << "断开客户端socket链接\n\n\n";
 }
+
+
 
 

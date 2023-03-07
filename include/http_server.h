@@ -15,11 +15,11 @@ private:
         std::string _IP;
         int _PORT;
 
-        std::string _web_file_path;
-        std::string _web_default;
+        std::string _web_fpath;
+        std::string _web_default_index_fname;
 
         std::string _log_path;
-        std::string _log_file_name;
+        std::string _log_fname;
     };
 public:
     http_server();
@@ -27,7 +27,7 @@ public:
 
 public:
     void start();
-    void set_config(std::string argv_ip, int argv_port, std::string argv_web_file_path, std::string argv_web_default = "/index.html", std::string argv_log_path = "./log", std::string argv_log_file_name = "log.txt");
+    void set_config(std::string argv_ip, int argv_port, std::string argv_web_fpath = ".", std::string argv_web_default_index_fname = "/index.html", std::string argv_log_path = "./log", std::string argv_log_fname = "log.txt");
 
 private:
     //void client_read_write(int argv_client_fd, epoll_server& argv_this);

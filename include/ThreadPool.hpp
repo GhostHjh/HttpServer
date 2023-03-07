@@ -45,14 +45,12 @@ inline ThreadPool::ThreadPool(int argv_ThreadPool_size)
 
                     {
                         std::unique_lock<std::mutex> tmp_lock(this->_mutex);
-                        this->_condition.wait(tmp_lock, [this](){ std::cout << "等待任务中\n";return this->_is_stop || (this->_TaskS.size() != 0); });
+                        this->_condition.wait(tmp_lock, [this](){ return this->_is_stop || (this->_TaskS.size() != 0); });
                         if (this->_is_stop && (this->_TaskS.size() == 0))
                             return;
 
                         tmp_task = std::move(this->_TaskS.front());
                         this->_TaskS.pop_front();
-                        std::cout << "成功获取一个新任务\n";
-                        std::cout << "当前任务列表有 " << this->_TaskS.size() << " 个任务\n";
                     }
                     tmp_task();
                 }

@@ -6,8 +6,8 @@
 #include <stdexcept>
 #include <string>
 
-http_header::http_header(std::string argv_client_header_str, std::string argv_path_defult_str)
-    : client_header_str(argv_client_header_str), path_default(argv_path_defult_str)
+http_header::http_header(std::string argv_client_header_str)
+    : client_header_str(argv_client_header_str)
 {
     client_header_map_init();
 }
@@ -83,7 +83,6 @@ void http_header::client_header_map_init()
     //获取客户端请求的路径
     for (; client_header_str[client_header_str_index] != ' '; ++client_header_str_index)
         client_header_map["request_path"] += client_header_str[client_header_str_index];
-    path_default_init();
     ++client_header_str_index;
 
     //获取客户端发送请求的HTTP版本
@@ -134,12 +133,6 @@ void http_header::client_header_map_init()
             header_value.clear();
         }
     }
-}
-
-void http_header::path_default_init()
-{
-    if (client_header_map["request_path"] == "/")
-        client_header_map["request_path"] = path_default;
 }
 
 //*************************************************************************************************
