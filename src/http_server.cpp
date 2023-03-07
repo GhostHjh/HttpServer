@@ -29,7 +29,7 @@ void http_server::start()
     //_epoll_server->status();
 
     epoll_server::GET()->set_client_func(std::bind(&http_server::client_read_write, this, std::placeholders::_1));
-    epoll_server::GET()->status();
+    epoll_server::GET()->start();
 }
 
 void http_server::set_config(std::string argv_ip, int argv_port, std::string argv_web_fpath, std::string argv_web_default_index_fname, std::string argv_log_path, std::string argv_long_file_name)

@@ -96,10 +96,8 @@ void epoll_server::config(std::string argv_ip, int argv_port, int argv_listen_si
     epoll_init();
 }
 
-void epoll_server::status()
+void epoll_server::start()
 {
-    std::cout << set_client_func() <<  std::endl;
-
     if (!socket_init() || !epoll_init() || !set_client_func())
     {
         //std::logic_error("启动失败");

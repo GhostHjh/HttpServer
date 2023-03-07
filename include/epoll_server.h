@@ -23,7 +23,7 @@ private:
 public:
     static epoll_server* GET();
     void config(std::string argv_ip = "0.0.0.0", int argv_port = 22222, int argv_listen_size = 1024);
-    void status();
+    void start();
     void stop();
 
 public:
