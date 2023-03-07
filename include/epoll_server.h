@@ -27,8 +27,6 @@ public:
     void stop();
 
 public:
-    //const bool set_client_func(std::function<void(epoll_event argv_event_ev, epoll_server& argv_this)> argv_client_func);
-    //const bool set_client_func(std::function<void(int, epoll_server&)> argv_client_func);
     const bool set_client_func(std::function<void(int)> argv_client_func);
     const bool set_client_func();
 
@@ -41,7 +39,6 @@ private:
     void fcntl_fd(int& argv_fd);
 
 private:
-    //std::atomic<bool> _status;
     bool _status;
     std::string _IP;
     int _PORT;
@@ -49,7 +46,6 @@ private:
     int _socket_fd;
     int _epoll_fd;
     int _listen_size;
-    //epoll_event* _epoll_evs;
 
     static epoll_server* _epoll_server;
 private:
