@@ -150,16 +150,10 @@ void http_header::add_server_header_request_type_length(std::string argv_request
 void http_header::add_server_header(std::initializer_list< std::string > argv_pair_s)
 {
     if (argv_pair_s.size() % 2 != 0)
-        std::logic_error("参数不够");
+        std::logic_error("参数过多或过少");
     
-    for (auto i = argv_pair_s.begin(); i != argv_pair_s.end(); i += 2)
-    {
-        server_header_map[*i] = *(i+1);
-    }
-    
-    for(auto i : server_header_map)
-        server_header_str += i.first + " : " + i.second + "\r\n";
-
+    for (auto value = argv_pair_s.begin(); value != argv_pair_s.end(); ++value)
+        server_header_str += *(value) + ": " + *(++value) + "\r\n";
 }
 
 void http_header::add_serverheader_request_end()
@@ -172,9 +166,9 @@ const std::string http_header::get_server_header()
     return server_header_str;
 }
 
-std::string& http_header::add_server_header(std::string argv_key)
+void http_header::add_server_header(std::string argv_key, std::string argv_value)
 {
-    return server_header_map[argv_key];
+    server_header_str += argv_key + ": " + argv_value + "\r\n";
 }
 
 

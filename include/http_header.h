@@ -43,7 +43,7 @@ public:
     void add_server_header(std::initializer_list< std::string > argv_pair_s);
     void add_serverheader_request_end();
 
-    std::string& add_server_header(std::string argv_key);
+    void add_server_header(std::string argv_key, std::string argv_value);
     
     const std::string get_server_header();
 
@@ -52,7 +52,6 @@ private:
 private:
     //存储用于回应客户端的header字符串和键值对
     std::string server_header_str;
-    std::map< std::string, std::string > server_header_map;
 };
 
 
