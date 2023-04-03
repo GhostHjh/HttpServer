@@ -31,7 +31,9 @@ const bool epoll_server::socket_init()
     if (_socket_fd < 1)
     {
         _socket_fd = socket(AF_INET, SOCK_STREAM, 0) ;
-    
+        int opt = 1;
+        setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const void*>(&opt), sizeof(opt));   
+        
         sockaddr_in socket_addr;
         socket_addr.sin_family = AF_INET;
         socket_addr.sin_addr.s_addr = inet_addr(_IP.c_str());
@@ -42,7 +44,9 @@ const bool epoll_server::socket_init()
 
         if (listen(_socket_fd, _listen_size) == -1)
             return false;
+        
         fcntl_fd(_socket_fd);
+
     }
     
     return true;

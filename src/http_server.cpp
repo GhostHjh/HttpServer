@@ -127,7 +127,7 @@ bool http_server::web_file_read(int& argv_client_fd, std::string& argv_client_he
         if (!_file.file_is_open())
         {
             tmp_header.add_server_header_request_status(1.1, 404, "Not Fount");
-            tmp_header.add_serverheader_request_end();
+            tmp_header.add_server_header("Server", "my_httpserver");
             tmp_header.add_serverheader_request_end();
             send(argv_client_fd, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size(), 0);
             std::cout << "没有客户端要的资源，直接断开链接\n";
@@ -136,6 +136,7 @@ bool http_server::web_file_read(int& argv_client_fd, std::string& argv_client_he
         
         tmp_header.add_server_header_request_status();
         tmp_header.add_server_header_request_type_length(tmp_header.get_accept_type(), _file.file_size());
+        tmp_header.add_server_header("Server", "my_httpserver");
         tmp_header.add_serverheader_request_end();
 
         int write_size = send(argv_client_fd, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size(), 0);
@@ -143,7 +144,6 @@ bool http_server::web_file_read(int& argv_client_fd, std::string& argv_client_he
         {
             write_size = send(argv_client_fd, _file.get_file_str(), 102400, 0);
         }
-        write_size = send(argv_client_fd, "\r\n", 2, 0);
         
         if (write_size < 1)
         {
