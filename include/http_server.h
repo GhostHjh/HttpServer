@@ -32,7 +32,7 @@ public:
 private:
     //void client_read_write(int argv_client_fd, epoll_server& argv_this);
     void client_read_write(int argv_client_fd);
-    void web_file_read(int& argv_client_socket, std::string& argv_client_header);
+    bool web_file_read(int& argv_client_fd, std::string& argv_client_header);
     const std::ios_base::openmode file_read_b(const std::string& argv_file_type);
 
 private:

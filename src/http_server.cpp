@@ -56,41 +56,47 @@ void http_server::set_config(std::string argv_ip, int argv_port, std::string arg
 void http_server::client_read_write(int argv_client_fd)
 {
     signal(SIGPIPE, SIG_IGN);
-    int& client_socket = argv_client_fd;
 
     char* buff = new char[1024];
     std::string client_header;
+    bool client_connection = true;
 
     std::cout << "开始接收数据\n";
-    int read_size = read(client_socket, buff, 1024);
-
-    if (read_size < 1)
-    {
-        std::cout << "客户端断开链接\n\n\n";
-        close(client_socket);
-        return;
-    }
-
-    client_header += buff;
-    for (; read_size == 1024; )
+    for (; true; )
     {
         memset(buff, 0, 1024);
-        read_size = read(client_socket, buff, 1024);
+        int read_size = recv(argv_client_fd, buff, 1024, 0);
 
-        //cout << read_size << endl;
+        if (read_size == 0 || !client_connection)
+        {
+            delete[](buff);
+            std::cout << "客户端断开链接\n\n\n";
+            epoll_server::GET()->DEL_epoll_evs(argv_client_fd);
+            close(argv_client_fd);
+            return;
+        }
+        else if (read_size < 0)
+        {
+            delete[](buff);
+            return;
+        }
+
         client_header += buff;
+        for (; read_size == 1024; )
+        {
+            memset(buff, 0, 1024);
+            read_size = recv(argv_client_fd, buff, 1024, 0);
+
+            //cout << read_size << endl;
+            client_header += buff;
+        }
+        std::cout << "数据全部接收完成\n";
+
+        client_connection = web_file_read(argv_client_fd, client_header);
     }
-    delete[](buff);
-    std::cout << "数据全部接收完成\n";
-
-    web_file_read(client_socket, client_header);
-
-    epoll_server::GET()->DEL_epoll_evs(client_socket);
-    close(client_socket);
-    std::cout << "断开客户端socket链接\n\n\n";
 }
 
-void http_server::web_file_read(int& argv_client_socket, std::string& argv_client_header)
+bool http_server::web_file_read(int& argv_client_fd, std::string& argv_client_header)
 {
     http_header tmp_header(argv_client_header);
     if (tmp_header.client_header_is_ok())
@@ -122,26 +128,33 @@ void http_server::web_file_read(int& argv_client_socket, std::string& argv_clien
         {
             tmp_header.add_server_header_request_status(1.1, 404, "Not Fount");
             tmp_header.add_serverheader_request_end();
-            write(argv_client_socket, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size());
-            std::cout << "没有客户端要的资源，直接断开链接\n\n\n";
-            //close(argv_client_socket);
-            return;
+            tmp_header.add_serverheader_request_end();
+            send(argv_client_fd, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size(), 0);
+            std::cout << "没有客户端要的资源，直接断开链接\n";
+            return false;
         }
         
         tmp_header.add_server_header_request_status();
         tmp_header.add_server_header_request_type_length(tmp_header.get_accept_type(), _file.file_size());
         tmp_header.add_serverheader_request_end();
 
-        int write_size = write(argv_client_socket, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size());
+        int write_size = send(argv_client_fd, tmp_header.get_server_header().c_str(), tmp_header.get_server_header().size(), 0);
         for (; !_file.file_EOF() && write_size > 0;)
         {
-            write_size = write(argv_client_socket, _file.get_file_str(), 102400);
+            write_size = send(argv_client_fd, _file.get_file_str(), 102400, 0);
         }
+        write_size = send(argv_client_fd, "\r\n", 2, 0);
         
         if (write_size < 1)
+        {
             std::cout << "客户端主动断开\n";
+            return false;
+        }
         else
+        {
             std::cout << "客户端请求内容发送完成\n";
+            return true;
+        }
     }
 }
 
